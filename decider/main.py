@@ -15,6 +15,9 @@ AGGREGATE_WINDOW_SEC = int(os.getenv("EDGEDECIDER_AGG_WINDOW_SEC", "60"))
 HEARTBEAT_INTERVAL_SEC = int(os.getenv("EDGEDECIDER_HEARTBEAT_SEC", "300"))
 ALARM_COOLDOWN_SEC = int(os.getenv("EDGEDECIDER_ALARM_COOLDOWN_SEC", "60"))
 
+# ✅ Política B: publicar aggregates al cloud cada X segundos (por defecto 15 min)
+AGGREGATE_PUBLISH_INTERVAL_SEC = int(os.getenv("EDGEDECIDER_AGG_PUBLISH_SEC", "900"))
+
 LOG_LEVEL = os.getenv("EDGEDECIDER_LOG_LEVEL", "INFO").upper()
 
 logging.basicConfig(
@@ -30,52 +33,38 @@ def make_msg(payload: dict) -> Message:
     m.content_encoding = "utf-8"
     return m
 
-# ---------- shared state ----------
 lock = threading.Lock()
 latest = None
 latest_device_id = "unknown"
 latest_received_ts = 0.0
 seq = 0
 
-# aggregates
 buf_light = []
 last_temp = None
 last_hum = None
 
-# alarms + cooldown
 alarm_active = {"gas": False, "pir": False}
 last_alarm_emit = {"gas": 0.0, "pir": 0.0}
 
-# arm state
 armed = False
 last_touch = False
 
 def _is_dict(x): return isinstance(x, dict)
 
 def normalize(data_in: dict) -> dict:
-    """
-    Accepts:
-      - sensorSim-like (dict sensors)
-      - NodeMCU raw (bool/str sensors)
-    Returns a unified dict with safe accessors.
-    """
     device_id = data_in.get("deviceId", "unknown")
     sensors = data_in.get("sensors", {})
     if not isinstance(sensors, dict):
         sensors = {}
 
-    # If it already looks like sensorSim (gas/light/pir are dicts) keep it but
-    # also extract door/touch if present in raw keys.
     looks_sensorsim = any(_is_dict(sensors.get(k)) for k in ("gas","light","pir","dht11","sound"))
     if looks_sensorsim:
-        # enrich optional fields
         door = sensors.get("door")
         touch = sensors.get("touch")
         if isinstance(door, str) or isinstance(touch, bool):
             data_in["_meta"] = {"door": door, "touch": touch}
         return data_in
 
-    # NodeMCU raw mapping
     motion = bool(sensors.get("motion", False))
     door = sensors.get("door", "UNKNOWN")
     if not isinstance(door, str):
@@ -121,7 +110,6 @@ def on_message_received(message):
         device_id = data.get("deviceId", "unknown")
         sensors = data.get("sensors", {}) if isinstance(data.get("sensors", {}), dict) else {}
 
-        # safe dicts
         light = sensors.get("light") if _is_dict(sensors.get("light")) else {}
         dht = sensors.get("dht11") if _is_dict(sensors.get("dht11")) else {}
 
@@ -159,9 +147,11 @@ def main():
     start_ts = time.time()
     last_agg_ts = time.time()
     last_hb_ts = time.time()
+    last_agg_publish_ts = 0.0  # ✅ control de publicación cloud (política B)
 
     log.info("edgeDecider started")
     log.info(f"[DECIDER] Listening on {INPUT_NAME}...")
+    log.info(f"[DECIDER] Aggregate publish interval: {AGGREGATE_PUBLISH_INTERVAL_SEC}s")
 
     while True:
         now = time.time()
@@ -178,19 +168,18 @@ def main():
             gas = sensors.get("gas") if _is_dict(sensors.get("gas")) else {}
             pir = sensors.get("pir") if _is_dict(sensors.get("pir")) else {}
 
-            # meta for door/touch (from NodeMCU)
             meta = data.get("_meta", {}) if isinstance(data.get("_meta", {}), dict) else {}
             door = meta.get("door", "UNKNOWN")
             touch = bool(meta.get("touch", False))
 
-            # ---- ARM toggle on touch rising edge ----
+            # ARM toggle on touch rising edge
             if touch and not last_touch:
                 armed = not armed
                 client.send_message_to_output(make_msg(arm_event(device_id, armed)), OUTPUT_NAME)
                 log.info(f"ARM toggled -> {armed}")
             last_touch = touch
 
-            # ---- Gas alarm edge-triggered + cooldown ----
+            # Gas alarm edge-triggered + cooldown
             gas_alarm = bool(gas.get("alarm", False))
             prev_gas = alarm_active["gas"]
             if gas_alarm and not prev_gas:
@@ -208,25 +197,46 @@ def main():
                 client.send_message_to_output(make_msg(alarm_event(device_id, "gas", gas, "cleared", severity="info")), OUTPUT_NAME)
                 log.info("Alarm CLEARED: gas")
 
-            # ---- Intrusion: only if armed ----
+            # PIR alarm
             motion = bool(pir.get("motion", False))
+            prev_pir = alarm_active["pir"]
+            if motion and not prev_pir:
+                alarm_active["pir"] = True
+                last_alarm_emit["pir"] = now
+                client.send_message_to_output(make_msg(alarm_event(device_id, "pir", pir, "raised")), OUTPUT_NAME)
+                log.info("Alarm RAISED: pir")
+            elif (not motion) and prev_pir:
+                alarm_active["pir"] = False
+                last_alarm_emit["pir"] = now
+                client.send_message_to_output(make_msg(alarm_event(device_id, "pir", pir, "cleared", severity="info")), OUTPUT_NAME)
+                log.info("Alarm CLEARED: pir")
+
+            # Intrusion: only if armed
             if armed and calc_intrusion(door, motion):
                 ctx = {"door": door, "motion": motion}
                 client.send_message_to_output(make_msg(intrusion_event(device_id, ctx)), OUTPUT_NAME)
                 log.info("Event: INTRUSION")
 
-        # --- Aggregate ---
+        # --- Aggregate (compute always, publish periodically) ---
         if now - last_agg_ts >= AGGREGATE_WINDOW_SEC:
             with lock:
                 light_avg = avg(buf_light)
                 t = last_temp
                 h = last_hum
                 buf_light = []
-            client.send_message_to_output(make_msg(aggregate_event(device_id, AGGREGATE_WINDOW_SEC, light_avg, t, h)), OUTPUT_NAME)
-            log.info("Aggregate sent")
+
+            evt = aggregate_event(device_id, AGGREGATE_WINDOW_SEC, light_avg, t, h)
+
+            if now - last_agg_publish_ts >= AGGREGATE_PUBLISH_INTERVAL_SEC:
+                client.send_message_to_output(make_msg(evt), OUTPUT_NAME)
+                last_agg_publish_ts = now
+                log.info("Aggregate PUBLISHED to cloud")
+            else:
+                log.info("Aggregate computed (kept in edge)")
+
             last_agg_ts = now
 
-        # --- Heartbeat ---
+        # --- Heartbeat (always) ---
         if now - last_hb_ts >= HEARTBEAT_INTERVAL_SEC:
             uptime_sec = int(now - start_ts)
             last_age = int(now - last_seen) if last_seen > 0 else None
