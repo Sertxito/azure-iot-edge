@@ -14,7 +14,7 @@ Edge decide, IoT Hub enruta, Storage persiste.
 - Adaptacion de formatos heterogeneos a un contrato estable.
 - Emision de eventos semanticos y agregados desde Edge.
 - Enrutado en Azure IoT Hub hacia almacenamiento por tipo de dato.
-- Operacion reproducible en Raspberry Pi (ARM64) y NUC/equipos x86_64.
+- Operacion actual centrada en NUC/equipos x86_64.
 
 ## Fuera de alcance
 

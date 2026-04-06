@@ -40,19 +40,12 @@ python -m unittest discover -s tests -v
 ./scripts/redeploy-edge.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -ResourceGroup "<RESOURCE_GROUP>" -IoTHubName "<IOTHUB_NAME>" -DeviceId "<EDGE_DEVICE_ID>" -AcrName "<ACR_NAME>"
 ```
 
-## NUC vs Raspberry (implicaciones)
+## Entorno operativo actual
 
-El proyecto soporta ambos hosts Edge:
+El entorno operativo activo es NUC (x86_64) con imagenes `linux/amd64`.
 
-- NUC (x86_64): imagenes `linux/amd64`.
-- Raspberry Pi (ARM64): imagenes `linux/arm64`.
-
-El script `scripts/redeploy-edge.ps1` usa `-ImagePlatform auto` por defecto:
-
-- Si `-DeviceId` contiene `rasp`, `pi` o `arm`, construye `linux/arm64`.
-- En otro caso, construye `linux/amd64`.
-
-Puedes forzarlo manualmente con `-ImagePlatform linux/amd64` o `-ImagePlatform linux/arm64`.
+La referencia a Raspberry Pi se mantiene solo como material educativo/historico,
+no como objetivo de despliegue actual.
 
 ## Nota sobre monitorizacion en IoT Hub
 

@@ -91,8 +91,7 @@ Que hace el script:
 
 1. Selecciona suscripcion y valida extension azure-iot.
 2. Construye imagenes para plataforma objetivo:
-  - NUC (x86_64): `linux/amd64`.
-  - Raspberry Pi (ARM64): `linux/arm64`.
+  - Operacion actual: NUC (x86_64) -> `linux/amd64`.
   - En `-ImagePlatform auto`, la plataforma se infiere por `-DeviceId`.
 3. Genera `deployment/modules-content-<tag>.json`.
 4. Aplica deployment en IoT Hub con blue/green (create nuevo + delete anterior).
@@ -102,6 +101,8 @@ Opciones utiles:
 - `-SkipBuild`: reutiliza un tag ya existente.
 - `-SkipApply`: solo genera content para revision.
 - `-ImagePlatform linux/amd64|linux/arm64`: fuerza arquitectura.
+
+Nota: aunque el script soporta `linux/arm64`, la operacion actual del proyecto se centra en NUC.
 
 ## Nota de observabilidad (monitor-events)
 

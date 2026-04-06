@@ -8,7 +8,7 @@
 - Routing Edge e IoT Hub alineado y sin duplicados funcionales.
 - Flujo de secretos locales centralizado con .env.local y sincronizacion a Arduino.
 - Despliegue IoT Edge estabilizado con estrategia blue/green.
-- Operacion diferenciada por arquitectura host (NUC amd64 / Raspberry arm64).
+- Operacion actual centrada en NUC (amd64).
 - Politica definida para ruta debug temporal de `monitor-events` (crear-validar-eliminar).
 
 ## Cambios relevantes recientes

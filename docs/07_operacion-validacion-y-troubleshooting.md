@@ -31,12 +31,11 @@ iotedge logs edgeDecider --tail 100
 
 1. Verificar llegada a storage por ruta esperada.
 
-## NUC vs Raspberry en operacion
+## Entorno operativo actual
 
-La operacion diaria es la misma en ambos hosts (Linux + IoT Edge), pero cambia la arquitectura de imagen:
+La operacion diaria actual se ejecuta en NUC (Linux + IoT Edge, `linux/amd64`).
 
-- NUC: `linux/amd64`.
-- Raspberry Pi: `linux/arm64`.
+La referencia a Raspberry se mantiene solo como historica/educativa.
 
 Validaciones adicionales tras redeploy:
 
@@ -52,7 +51,7 @@ Validaciones adicionales tras redeploy:
 3. Confirmar misma LAN entre NodeMCU y Edge.
 4. Validar conexion MQTT desde NodeMCU.
 
-Comandos utiles en host Edge (NUC o Raspberry):
+Comandos utiles en host Edge (NUC):
 
 ```bash
 hostname -I
