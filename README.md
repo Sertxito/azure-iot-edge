@@ -1,35 +1,62 @@
-# IoT Edge – MQTT Bridge + Edge Decider
+# edge-decider
 
-Pipeline Edge real ejecutándose en Azure IoT Edge (Raspberry Pi).
+Proyecto IoT Edge para ingesta MQTT, normalizacion de payload y decision semantica local antes de subir a Azure IoT Hub.
 
-## Arquitectura
+## Lectura recomendada de documentacion
 
-NodeMCU → MQTT (Mosquitto)
-→ mqtt-bridge (Edge, normaliza payload)
-→ edgeDecider (Edge, decide)
-→ (cloud opcional)
+1. [docs/01_vision-y-alcance.md](docs/01_vision-y-alcance.md)
+2. [docs/02_arquitectura-y-flujo.md](docs/02_arquitectura-y-flujo.md)
+3. [docs/03_configuracion-local-y-secrets.md](docs/03_configuracion-local-y-secrets.md)
+4. [docs/04_contrato-de-datos.md](docs/04_contrato-de-datos.md)
+5. [docs/05_eventos-y-reglas-del-decider.md](docs/05_eventos-y-reglas-del-decider.md)
+6. [docs/06_despliegue-edge-e-iothub-routing.md](docs/06_despliegue-edge-e-iothub-routing.md)
+7. [docs/07_operacion-validacion-y-troubleshooting.md](docs/07_operacion-validacion-y-troubleshooting.md)
+8. [docs/08_hardware-y-red-nodemcu.md](docs/08_hardware-y-red-nodemcu.md)
+9. [docs/09_historial-de-cambios.md](docs/09_historial-de-cambios.md)
 
-## Módulos
+## Estructura tecnica
 
-### mqtt-bridge
-- Escucha MQTT
-- Normaliza payload (NodeMCU → sensorSim-like)
-- Publica a IoT Edge output `telemetry`
+- [bridge/mqtt/main.py](bridge/mqtt/main.py): bridge MQTT -> IoT Edge (normalizacion + forward).
+- [decider/main.py](decider/main.py): motor de reglas y eventos semanticos.
+- [arduinos/ESP_Home.ino](arduinos/ESP_Home.ino): firmware de referencia NodeMCU.
 
-### edgeDecider
-- Consume `input1`
-- Ejecuta lógica:
-  - alarmas
-  - agregados
-  - heartbeat
-- NO depende del formato del dispositivo
+## Comandos utiles
 
-## Por qué así
-- El bridge desacopla dispositivos del core
-- El decider es estable y reutilizable
-- Edge decide, cloud observa
+### Tests
 
-## Estado
-✅ Running en Azure IoT Edge  
-✅ Routing limpio (mqtt-bridge → edgeDecider)  
-✅ Sin contratos rotos
+```bash
+python -m unittest discover -s tests -v
+```
+
+### Secrets locales para Arduino
+
+```powershell
+./scripts/sync-local-secrets.ps1
+```
+
+### Redeploy completo Edge (build + deployment)
+
+```powershell
+./scripts/redeploy-edge.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -ResourceGroup "<RESOURCE_GROUP>" -IoTHubName "<IOTHUB_NAME>" -DeviceId "<EDGE_DEVICE_ID>" -AcrName "<ACR_NAME>"
+```
+
+## NUC vs Raspberry (implicaciones)
+
+El proyecto soporta ambos hosts Edge:
+
+- NUC (x86_64): imagenes `linux/amd64`.
+- Raspberry Pi (ARM64): imagenes `linux/arm64`.
+
+El script `scripts/redeploy-edge.ps1` usa `-ImagePlatform auto` por defecto:
+
+- Si `-DeviceId` contiene `rasp`, `pi` o `arm`, construye `linux/arm64`.
+- En otro caso, construye `linux/amd64`.
+
+Puedes forzarlo manualmente con `-ImagePlatform linux/amd64` o `-ImagePlatform linux/arm64`.
+
+## Nota sobre monitorizacion en IoT Hub
+
+`az iot hub monitor-events` solo muestra trafico del endpoint built-in `events`.
+
+Si el hub enruta solo a endpoints custom (storage/event hubs), puede no mostrar eventos aunque el pipeline funcione.
+En ese caso, crear una ruta temporal de debug a `events`, validar y eliminarla.

@@ -1,6 +1,12 @@
 __pycache__/
 *.pyc
 .env
+.env.local
+.env.*.local
+.venv/
 .vscode/
 .idea/
 .DS_Store
+arduinos/secrets.local.h
+.github/
+deployment/modules-content-*.json

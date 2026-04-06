@@ -3,10 +3,35 @@ import os
 import time
 import logging
 import threading
+from pathlib import Path
 from azure.iot.device import IoTHubModuleClient, Message
 
 from decider.events import alarm_event, state_event, intrusion_event, aggregate_event
 from decider.rules import light_bucket, temp_band, hum_band, is_intrusion
+
+
+def _load_local_env():
+    """Load local key=value files without overriding already exported env vars."""
+    candidates = [
+        Path.cwd() / ".env.local",
+        Path(__file__).resolve().parents[1] / ".env.local",
+    ]
+    for env_path in candidates:
+        if not env_path.exists() or not env_path.is_file():
+            continue
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+        break
+
+
+_load_local_env()
 
 # ---- Env (cortas + fallback largas) ----
 INPUT_NAME  = os.getenv("ED_IN",  os.getenv("EDGEDECIDER_INPUT",  "input1"))
@@ -43,6 +68,27 @@ def make_msg(payload: dict) -> Message:
     m.content_type = "application/json"
     m.content_encoding = "utf-8"
     return m
+
+
+def safe_send(client, payload: dict, context: str):
+    try:
+        client.send_message_to_output(make_msg(payload), OUTPUT_NAME)
+        return True
+    except Exception as ex:
+        log.error(f"Failed to send {context} event: {ex}")
+        return False
+
+
+def connect_module_client_with_retry(retry_seconds: float = 5.0) -> IoTHubModuleClient:
+    """Create and connect module client, retrying until edgeHub is ready."""
+    while True:
+        try:
+            client = IoTHubModuleClient.create_from_edge_environment()
+            client.connect()
+            return client
+        except Exception as ex:
+            log.error(f"Module client connect failed; retrying in {retry_seconds}s: {ex}")
+            time.sleep(retry_seconds)
 
 # ---- shared state ----
 lock = threading.Lock()
@@ -185,18 +231,15 @@ def avg(values):
 def emit_if_changed(client, device_id, name, new_value, value_for_payload=None, armed_flag=None, extra=None):
     if last_emitted.get(name) != new_value:
         last_emitted[name] = new_value
-        client.send_message_to_output(
-            make_msg(state_event(device_id, name, new_value, value=value_for_payload, armed=armed_flag, extra=extra)),
-            OUTPUT_NAME
-        )
-        log.info(f"State change emitted: {name} -> {new_value}")
+        evt = state_event(device_id, name, new_value, value=value_for_payload, armed=armed_flag, extra=extra)
+        if safe_send(client, evt, f"state.change:{name}"):
+            log.info(f"State change emitted: {name} -> {new_value}")
 
 def main():
     global intrusion_active
 
-    client = IoTHubModuleClient.create_from_edge_environment()
+    client = connect_module_client_with_retry()
     client.on_message_received = on_message_received
-    client.connect()
 
     start_ts = time.time()
     last_agg_pub_ts = time.time()
@@ -207,144 +250,146 @@ def main():
 
     while True:
         now = time.time()
-
-        with lock:
-            data = latest
-            device_id = latest_device_id
-            last_seen = latest_received_ts
-            seq_value = seq
-
-        if data:
-            sensors = data.get("sensors", {}) if isinstance(data.get("sensors"), dict) else {}
-            meta = data.get("_meta", {}) if isinstance(data.get("_meta"), dict) else {}
-
-            gas = sensors.get("gas") if _is_dict(sensors.get("gas")) else {}
-            pir = sensors.get("pir") if _is_dict(sensors.get("pir")) else {}
-            light = sensors.get("light") if _is_dict(sensors.get("light")) else {}
-            dht = sensors.get("dht11") if _is_dict(sensors.get("dht11")) else {}
-
-            # actuales
-            gas_alarm = bool(gas.get("alarm", False))
-            motion = bool(pir.get("motion", False))
-            door = meta.get("door", "UNKNOWN")
-            if not isinstance(door, str):
-                door = "UNKNOWN"
-            touch = bool(meta.get("touch", False))
-
-            la = light.get("analog", None)
-            t = dht.get("temp_c", None)
-            h = dht.get("humidity", None)
-
-            # --- armado: 1 = armado, 0 = desarmado (persistencia en runtime) ---
-            new_armed = True if touch else False
-            if new_armed != state["armed"]:
-                state["armed"] = new_armed
-                emit_if_changed(client, device_id, "armed", "ARMED" if new_armed else "DISARMED")
-
-            # --- door open/close event (si tenemos dato) ---
-            if door != state["door"]:
-                state["door"] = door
-                emit_if_changed(client, device_id, "door", "open" if door == "OPEN" else "closed",
-                                armed_flag=state["armed"], extra={"door_raw": door})
-
-            # --- motion on/off event (no-alarm) ---
-            if motion != state["motion"]:
-                state["motion"] = motion
-                emit_if_changed(client, device_id, "motion", "active" if motion else "inactive",
-                                armed_flag=state["armed"])
-
-            # --- light bucket change event ---
-            lb = light_bucket(la, bright_max=LIGHT_BRIGHT_MAX, ambient_max=LIGHT_AMBIENT_MAX)
-            state["light_bucket"] = lb
-            state["light_analog"] = la
-            emit_if_changed(client, device_id, "light_bucket", lb, value_for_payload=la)
-
-            # --- temperature band change event ---
-            tb = temp_band(t, low=TEMP_LOW, high=TEMP_HIGH)
-            state["temp_band"] = tb
-            state["temp_c"] = t
-            emit_if_changed(client, device_id, "temp_band", tb, value_for_payload=t)
-
-            # --- humidity band change event ---
-            hb = hum_band(h, low=HUM_LOW, high=HUM_HIGH)
-            state["hum_band"] = hb
-            state["hum"] = h
-            emit_if_changed(client, device_id, "hum_band", hb, value_for_payload=h)
-
-            # --- GAS alarm edge-triggered + cooldown (tipo alarm) ---
-            prev_gas = alarm_active["gas"]
-            if gas_alarm and not prev_gas:
-                alarm_active["gas"] = True
-                last_alarm_emit["gas"] = now
-                client.send_message_to_output(make_msg(alarm_event(device_id, "gas", gas, "raised")), OUTPUT_NAME)
-                log.info("Alarm RAISED: gas")
-            elif gas_alarm and prev_gas and (now - last_alarm_emit["gas"] >= ALARM_CD_SEC):
-                last_alarm_emit["gas"] = now
-                client.send_message_to_output(make_msg(alarm_event(device_id, "gas", gas, "reminder")), OUTPUT_NAME)
-                log.info("Alarm REMINDER: gas")
-            elif (not gas_alarm) and prev_gas:
-                alarm_active["gas"] = False
-                last_alarm_emit["gas"] = now
-                client.send_message_to_output(make_msg(alarm_event(device_id, "gas", gas, "cleared", severity="info")), OUTPUT_NAME)
-                log.info("Alarm CLEARED: gas")
-
-            # --- PIR alarm edge-triggered (tipo alarm) ---
-            prev_pir = alarm_active["pir"]
-            if motion and not prev_pir:
-                alarm_active["pir"] = True
-                last_alarm_emit["pir"] = now
-                client.send_message_to_output(make_msg(alarm_event(device_id, "pir", pir, "raised")), OUTPUT_NAME)
-                log.info("Alarm RAISED: pir")
-            elif (not motion) and prev_pir:
-                alarm_active["pir"] = False
-                last_alarm_emit["pir"] = now
-                client.send_message_to_output(make_msg(alarm_event(device_id, "pir", pir, "cleared", severity="info")), OUTPUT_NAME)
-                log.info("Alarm CLEARED: pir")
-
-            # --- Intrusion (solo si armado) edge-triggered ---
-            intr = state["armed"] and is_intrusion(door, motion)
-            if intr and not intrusion_active:
-                intrusion_active = True
-                client.send_message_to_output(make_msg(intrusion_event(device_id, door, motion, state["armed"])), OUTPUT_NAME)
-                log.info("Event: INTRUSION")
-            elif (not intr) and intrusion_active:
-                intrusion_active = False
-                # opcional: emitir cleared si quieres (ahora no, para no ensuciar)
-                log.info("Intrusion cleared (internal)")
-
-        # --- Aggregate cada AGG_PUB_SEC: foto + salud + estado de sensores ---
-        if now - last_agg_pub_ts >= AGG_PUB_SEC:
+        try:
             with lock:
-                light_avg = avg(buf_light)
-                temp_avg  = avg(buf_temp)
-                hum_avg   = avg(buf_hum)
-                buf_light.clear()
-                buf_temp.clear()
-                buf_hum.clear()
+                data = latest
+                device_id = latest_device_id
+                last_seen = latest_received_ts
+                seq_value = seq
 
-            uptime = int(now - start_ts)
-            last_age = int(now - last_seen) if last_seen > 0 else None
+            if data:
+                sensors = data.get("sensors", {}) if isinstance(data.get("sensors"), dict) else {}
+                meta = data.get("_meta", {}) if isinstance(data.get("_meta"), dict) else {}
 
-            system = {
-                "uptime_sec": uptime,
-                "last_input_age_sec": last_age,
-                "seq": seq_value,
-                "armed": state["armed"]
-            }
+                gas = sensors.get("gas") if _is_dict(sensors.get("gas")) else {}
+                pir = sensors.get("pir") if _is_dict(sensors.get("pir")) else {}
+                light = sensors.get("light") if _is_dict(sensors.get("light")) else {}
+                dht = sensors.get("dht11") if _is_dict(sensors.get("dht11")) else {}
 
-            sensors_payload = {
-                "gas": {"alarm": alarm_active["gas"]},
-                "pir": {"motion": state["motion"]},
-                "door": {"state": state["door"]},
-                "light": {"avg": light_avg, "state": state["light_bucket"], "last": state["light_analog"]},
-                "temperature": {"avg": temp_avg, "state": state["temp_band"], "last": state["temp_c"]},
-                "humidity": {"avg": hum_avg, "state": state["hum_band"], "last": state["hum"]}
-            }
+                # actuales
+                gas_alarm = bool(gas.get("alarm", False))
+                motion = bool(pir.get("motion", False))
+                door = meta.get("door", "UNKNOWN")
+                if not isinstance(door, str):
+                    door = "UNKNOWN"
+                touch = bool(meta.get("touch", False))
 
-            evt = aggregate_event(device_id, AGG_PUB_SEC, system, sensors_payload)
-            client.send_message_to_output(make_msg(evt), OUTPUT_NAME)
-            log.info("Aggregate PUBLISHED to cloud")
-            last_agg_pub_ts = now
+                la = light.get("analog", None)
+                t = dht.get("temp_c", None)
+                h = dht.get("humidity", None)
+
+                # --- armado: 1 = armado, 0 = desarmado (persistencia en runtime) ---
+                new_armed = True if touch else False
+                if new_armed != state["armed"]:
+                    state["armed"] = new_armed
+                    emit_if_changed(client, device_id, "armed", "ARMED" if new_armed else "DISARMED")
+
+                # --- door open/close event (si tenemos dato) ---
+                if door != state["door"]:
+                    state["door"] = door
+                    emit_if_changed(client, device_id, "door", "open" if door == "OPEN" else "closed",
+                                    armed_flag=state["armed"], extra={"door_raw": door})
+
+                # --- motion on/off event (no-alarm) ---
+                if motion != state["motion"]:
+                    state["motion"] = motion
+                    emit_if_changed(client, device_id, "motion", "active" if motion else "inactive",
+                                    armed_flag=state["armed"])
+
+                # --- light bucket change event ---
+                lb = light_bucket(la, bright_max=LIGHT_BRIGHT_MAX, ambient_max=LIGHT_AMBIENT_MAX)
+                state["light_bucket"] = lb
+                state["light_analog"] = la
+                emit_if_changed(client, device_id, "light_bucket", lb, value_for_payload=la)
+
+                # --- temperature band change event ---
+                tb = temp_band(t, low=TEMP_LOW, high=TEMP_HIGH)
+                state["temp_band"] = tb
+                state["temp_c"] = t
+                emit_if_changed(client, device_id, "temp_band", tb, value_for_payload=t)
+
+                # --- humidity band change event ---
+                hb = hum_band(h, low=HUM_LOW, high=HUM_HIGH)
+                state["hum_band"] = hb
+                state["hum"] = h
+                emit_if_changed(client, device_id, "hum_band", hb, value_for_payload=h)
+
+                # --- GAS alarm edge-triggered + cooldown (tipo alarm) ---
+                prev_gas = alarm_active["gas"]
+                if gas_alarm and not prev_gas:
+                    alarm_active["gas"] = True
+                    last_alarm_emit["gas"] = now
+                    if safe_send(client, alarm_event(device_id, "gas", gas, "raised"), "alarm:gas:raised"):
+                        log.info("Alarm RAISED: gas")
+                elif gas_alarm and prev_gas and (now - last_alarm_emit["gas"] >= ALARM_CD_SEC):
+                    last_alarm_emit["gas"] = now
+                    if safe_send(client, alarm_event(device_id, "gas", gas, "reminder"), "alarm:gas:reminder"):
+                        log.info("Alarm REMINDER: gas")
+                elif (not gas_alarm) and prev_gas:
+                    alarm_active["gas"] = False
+                    last_alarm_emit["gas"] = now
+                    if safe_send(client, alarm_event(device_id, "gas", gas, "cleared", severity="info"), "alarm:gas:cleared"):
+                        log.info("Alarm CLEARED: gas")
+
+                # --- PIR alarm edge-triggered (tipo alarm) ---
+                prev_pir = alarm_active["pir"]
+                if motion and not prev_pir:
+                    alarm_active["pir"] = True
+                    last_alarm_emit["pir"] = now
+                    if safe_send(client, alarm_event(device_id, "pir", pir, "raised"), "alarm:pir:raised"):
+                        log.info("Alarm RAISED: pir")
+                elif (not motion) and prev_pir:
+                    alarm_active["pir"] = False
+                    last_alarm_emit["pir"] = now
+                    if safe_send(client, alarm_event(device_id, "pir", pir, "cleared", severity="info"), "alarm:pir:cleared"):
+                        log.info("Alarm CLEARED: pir")
+
+                # --- Intrusion (solo si armado) edge-triggered ---
+                intr = state["armed"] and is_intrusion(door, motion)
+                if intr and not intrusion_active:
+                    intrusion_active = True
+                    if safe_send(client, intrusion_event(device_id, door, motion, state["armed"]), "security.intrusion"):
+                        log.info("Event: INTRUSION")
+                elif (not intr) and intrusion_active:
+                    intrusion_active = False
+                    # opcional: emitir cleared si quieres (ahora no, para no ensuciar)
+                    log.info("Intrusion cleared (internal)")
+
+            # --- Aggregate cada AGG_PUB_SEC: foto + salud + estado de sensores ---
+            if now - last_agg_pub_ts >= AGG_PUB_SEC:
+                with lock:
+                    light_avg = avg(buf_light)
+                    temp_avg  = avg(buf_temp)
+                    hum_avg   = avg(buf_hum)
+                    buf_light.clear()
+                    buf_temp.clear()
+                    buf_hum.clear()
+
+                uptime = int(now - start_ts)
+                last_age = int(now - last_seen) if last_seen > 0 else None
+
+                system = {
+                    "uptime_sec": uptime,
+                    "last_input_age_sec": last_age,
+                    "seq": seq_value,
+                    "armed": state["armed"]
+                }
+
+                sensors_payload = {
+                    "gas": {"alarm": alarm_active["gas"]},
+                    "pir": {"motion": state["motion"]},
+                    "door": {"state": state["door"]},
+                    "light": {"avg": light_avg, "state": state["light_bucket"], "last": state["light_analog"]},
+                    "temperature": {"avg": temp_avg, "state": state["temp_band"], "last": state["temp_c"]},
+                    "humidity": {"avg": hum_avg, "state": state["hum_band"], "last": state["hum"]}
+                }
+
+                evt = aggregate_event(device_id, AGG_PUB_SEC, system, sensors_payload)
+                if safe_send(client, evt, "aggregate"):
+                    log.info("Aggregate PUBLISHED to cloud")
+                last_agg_pub_ts = now
+        except Exception as ex:
+            log.error(f"Main loop recovered from error: {ex}")
 
         time.sleep(SAMPLE_TICK_SEC)
 
