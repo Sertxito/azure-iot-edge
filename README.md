@@ -13,6 +13,7 @@ Proyecto IoT Edge para ingesta MQTT, normalizacion de payload y decision semanti
 7. [docs/07_operacion-validacion-y-troubleshooting.md](docs/07_operacion-validacion-y-troubleshooting.md)
 8. [docs/08_hardware-y-red-nodemcu.md](docs/08_hardware-y-red-nodemcu.md)
 9. [docs/09_historial-de-cambios.md](docs/09_historial-de-cambios.md)
+10. [docs/10_extension-cloud-analytics.md](docs/10_extension-cloud-analytics.md)
 
 ## Estructura tecnica
 
@@ -38,6 +39,18 @@ python -m unittest discover -s tests -v
 
 ```powershell
 ./scripts/redeploy-edge.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -ResourceGroup "<RESOURCE_GROUP>" -IoTHubName "<IOTHUB_NAME>" -DeviceId "<EDGE_DEVICE_ID>" -AcrName "<ACR_NAME>"
+```
+
+### Provision base cloud analytics (Event Hubs + ADLS + ruta IoT Hub)
+
+```powershell
+./scripts/provision-smartcity-cloud.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -ResourceGroup "<RG_DATA>" -Location "westeurope" -IoTHubName "<IOTHUB_NAME>" -IoTHubResourceGroup "<RG_IOTHUB>" -EventHubNamespace "<EH_NAMESPACE>" -StorageAccountName "<ADLS_ACCOUNT_NAME>"
+```
+
+### Configurar Stream Analytics por CLI (input Event Hub + outputs ADLS)
+
+```powershell
+./scripts/create-stream-analytics.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -ResourceGroup "<RG_DATA>" -Location "<LOCATION>" -JobName "<ASA_JOB>" -EventHubNamespace "<EH_NAMESPACE>" -EventHubName "telemetry" -StorageAccountName "<ADLS_ACCOUNT_NAME>" -FileSystemName "iot-historical" -QueryFilePath "deployment/stream-analytics/query.sql" -StartJob
 ```
 
 ## Entorno operativo actual

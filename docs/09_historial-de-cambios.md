@@ -10,6 +10,8 @@
 - Despliegue IoT Edge estabilizado con estrategia blue/green.
 - Operacion actual centrada en NUC (amd64).
 - Politica definida para ruta debug temporal de `monitor-events` (crear-validar-eliminar).
+- Base cloud analytics anadida para sesion: Event Hubs + ADLS + routing IoT Hub.
+- Flujo cloud validado extremo a extremo: Event Hubs -> Stream Analytics -> ADLS.
 
 ## Cambios relevantes recientes
 
@@ -28,6 +30,12 @@
 
 - Suite de tests unitarios en verde.
 - Checklist de troubleshooting y rollback documentado.
+
+1. Extension cloud analytics:
+
+- Script `scripts/provision-smartcity-cloud.ps1` para bootstrap de Event Hubs + ADLS + ruta IoT Hub.
+- Script `scripts/create-stream-analytics.ps1` para configurar ASA por CLI (sin portal).
+- Query `deployment/stream-analytics/query.sql` endurecida para payloads telemetry/aggregate y alias de outputs validos (`outputraw`, `outputagg1m`).
 
 ## Riesgos abiertos
 
