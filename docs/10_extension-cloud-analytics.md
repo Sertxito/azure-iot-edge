@@ -9,6 +9,10 @@ Extender el pipeline actual (Edge -> IoT Hub -> Storage) para cubrir en la sesio
 - Stream Analytics -> ADLS Gen2
 - Consumo analitico para Power BI
 
+Para construir el informe de demo en Power BI (modelo, visuales y medidas), usar:
+
+- [docs/11_powerbi-dashboard-sesion.md](11_powerbi-dashboard-sesion.md)
+
 ## Alcance de esta implementacion en repo
 
 Implementado en este repositorio:

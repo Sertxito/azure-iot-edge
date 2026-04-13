@@ -14,6 +14,7 @@ Proyecto IoT Edge para ingesta MQTT, normalizacion de payload y decision semanti
 8. [docs/08_hardware-y-red-nodemcu.md](docs/08_hardware-y-red-nodemcu.md)
 9. [docs/09_historial-de-cambios.md](docs/09_historial-de-cambios.md)
 10. [docs/10_extension-cloud-analytics.md](docs/10_extension-cloud-analytics.md)
+11. [docs/11_powerbi-dashboard-sesion.md](docs/11_powerbi-dashboard-sesion.md)
 
 ## Estructura tecnica
 
