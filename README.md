@@ -59,6 +59,43 @@ python -m unittest discover -s tests -v
 10. [docs/10_extension-cloud-analytics.md](docs/10_extension-cloud-analytics.md)
 11. [docs/11_powerbi-dashboard-sesion.md](docs/11_powerbi-dashboard-sesion.md)
 
+## Ayuntamiento Landing y dashboard Smart City
+
+La entrada principal de demo es Ayuntamiento Landing, conectada a Blob para datos reales cuando estan disponibles.
+
+1. Abre `docs/blob-config.js`.
+2. Configura `enabled: true`.
+3. Revisa `baseUrl`, `container`, `prefix` y `sasToken` (si aplica).
+4. Abre `docs/ayuntamiento-landing.html` en tu navegador.
+
+Si hay problema de acceso (SAS/CORS/ruta), la pagina entra en modo demo automaticamente para no romper la presentacion.
+
+Vista avanzada estilo sala de operaciones Smart City:
+
+- `docs/smart-city-ops-center.html`
+- Incluye gemelo urbano simulado con rutas, semaforos, trafico, red electrica, renovables y optimizacion AI de transporte.
+- Usa la misma configuracion de `docs/blob-config.js`.
+
+### Setup rapido (recomendado)
+
+Puedes dejarlo listo con un solo script:
+
+```powershell
+./scripts/setup-landing-blob-access.ps1 -SubscriptionId "<SUBSCRIPTION_ID>" -StorageAccountName "<STORAGE_ACCOUNT_NAME>" -ContainerName "iot-historical" -Prefix "aggregates/"
+```
+
+El script:
+
+1. Configura CORS para lecturas desde navegador.
+2. Genera SAS de lectura/listado para el contenedor.
+3. Actualiza `docs/blob-config.js` automaticamente.
+
+Si la landing sigue en demo, revisa primero:
+
+1. `enabled: true` en `docs/blob-config.js`.
+2. `sasToken` no vacio y vigente.
+3. Que existan blobs en `aggregates/`.
+
 ## Estructura tecnica
 
 - [bridge/mqtt/main.py](bridge/mqtt/main.py): bridge MQTT -> IoT Edge (normalizacion + forward).
@@ -148,7 +185,6 @@ Artefactos esperados:
 - Plantilla de entregables: [.github/skills/azure-smart-city-iot-solution-builder/references/smart-city-solution-template.md](.github/skills/azure-smart-city-iot-solution-builder/references/smart-city-solution-template.md)
 - Instruccion IoT Edge: [.github/instructions/azure-iot-edge-architecture.instructions.md](.github/instructions/azure-iot-edge-architecture.instructions.md)
 - Agente especializado: [.github/agents/azure-smart-city-iot-architect.agent.md](.github/agents/azure-smart-city-iot-architect.agent.md)
-
 
 ## Comandos utiles
 
