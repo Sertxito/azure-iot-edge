@@ -3,9 +3,7 @@
 #include <PubSubClient.h>
 #include <DHT.h>
 
-#if __has_include("secrets.local.h")
-#include "secrets.local.h"
-#endif
+#include "../secrets.local.h"
 
 // ================== PINES ==================
 #define PIN_PIR     D5
@@ -58,19 +56,51 @@ unsigned long lastPublishMs = 0;
 const unsigned long PUBLISH_EVERY_MS = 5000;
 
 // ================== WIFI ===================
+const char* wifiStatusToString(wl_status_t status) {
+  switch (status) {
+    case WL_IDLE_STATUS: return "IDLE";
+    case WL_NO_SSID_AVAIL: return "NO_SSID_AVAIL";
+    case WL_SCAN_COMPLETED: return "SCAN_COMPLETED";
+    case WL_CONNECTED: return "CONNECTED";
+    case WL_CONNECT_FAILED: return "CONNECT_FAILED";
+    case WL_CONNECTION_LOST: return "CONNECTION_LOST";
+    case WL_DISCONNECTED: return "DISCONNECTED";
+    default: return "UNKNOWN";
+  }
+}
+
 void connectWiFi() {
   WiFi.mode(WIFI_STA);
+  WiFi.persistent(false);
+  WiFi.disconnect();
+  delay(200);
+
+  Serial.print("SSID configured: ");
+  Serial.println(WIFI_SSID);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  unsigned long start = millis();
+  const unsigned long timeoutMs = 20000;
+  while (WiFi.status() != WL_CONNECTED && (millis() - start) < timeoutMs) {
     delay(400);
     Serial.print(".");
   }
 
-  Serial.println("\nWiFi connected ✅");
-  Serial.print("Node IP: ");
-  Serial.println(WiFi.localIP());
+  wl_status_t st = WiFi.status();
+  if (st == WL_CONNECTED) {
+    Serial.println("\nWiFi connected ✅");
+    Serial.print("Node IP: ");
+    Serial.println(WiFi.localIP());
+    return;
+  }
+
+  Serial.println("\nWiFi connection FAILED ❌");
+  Serial.print("Status: ");
+  Serial.print((int)st);
+  Serial.print(" (");
+  Serial.print(wifiStatusToString(st));
+  Serial.println(")");
 }
 
 // ================== MQTT ===================

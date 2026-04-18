@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ayuntamiento Landing | Guadarrama Smart City</title>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --paper: rgba(255, 255, 255, 0.9);
+      --edge: rgba(15, 23, 42, 0.14);
+      --brand: #8f1d22;
+      --brand-2: #c14a2f;
+      --accent: #0f766e;
+      --shadow: 0 20px 44px rgba(15, 23, 42, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(143, 29, 34, 0.28) 0%, rgba(143, 29, 34, 0) 38%),
+        radial-gradient(circle at 84% 18%, rgba(15, 118, 110, 0.24) 0%, rgba(15, 118, 110, 0) 40%),
+        linear-gradient(145deg, #f3efe7, #e6dac9);
+      padding: 24px;
+      display: grid;
+      place-items: center;
+    }
+
+    .wrap {
+      width: min(1180px, 100%);
+      border: 1px solid var(--edge);
+      border-radius: 26px;
+      background: var(--paper);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 28px;
+      border-bottom: 1px solid var(--edge);
+      display: grid;
+      gap: 14px;
+      background: linear-gradient(105deg, rgba(143, 29, 34, 0.08), rgba(15, 118, 110, 0.07));
+    }
+
+    .title-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 1.2rem + 1.6vw, 2.3rem);
+      letter-spacing: 0.2px;
+    }
+
+    .badge {
+      border-radius: 999px;
+      border: 1px solid rgba(143, 29, 34, 0.3);
+      color: #7f1d1d;
+      background: rgba(143, 29, 34, 0.08);
+      padding: 6px 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      max-width: 88ch;
+      line-height: 1.45;
+    }
+
+    .links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 20px 22px 24px;
+    }
+
+    .card {
+      border: 1px solid var(--edge);
+      border-radius: 16px;
+      padding: 16px;
+      background: #fff;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+      min-height: 210px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      right: -40px;
+      bottom: -40px;
+      width: 160px;
+      height: 160px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(143, 29, 34, 0.16), rgba(143, 29, 34, 0));
+      pointer-events: none;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.08rem;
+    }
+
+    .meta {
+      font-size: 0.88rem;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    .btn {
+      margin-top: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      text-decoration: none;
+      min-height: 42px;
+      font-weight: 800;
+      border: 1px solid transparent;
+      width: fit-content;
+      padding: 0 14px;
+    }
+
+    .btn.primary {
+      color: #fff;
+      background: linear-gradient(120deg, var(--brand), var(--brand-2));
+      box-shadow: 0 12px 24px rgba(143, 29, 34, 0.24);
+    }
+
+    .btn.secondary {
+      color: #0f172a;
+      border-color: var(--edge);
+      background: #fff;
+    }
+
+    .foot {
+      border-top: 1px solid var(--edge);
+      padding: 14px 22px 20px;
+      color: #475569;
+      font-size: 0.88rem;
+    }
+
+    .foot strong { color: #7f1d1d; }
+
+    @media (max-width: 900px) {
+      .links { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="title-line">
+        <h1>Ayuntamiento Landing | Guadarrama Smart City</h1>
+        <span class="badge">Sesion Demo Ejecutiva</span>
+      </div>
+      <p class="sub">
+        Punto de entrada para la presentacion municipal. Desde aqui puedes abrir el dashboard inmersivo de ciudad inteligente o la vista de telemetria operativa, ambas con soporte de datos Blob y fallback demo.
+      </p>
+    </section>
+
+    <section class="links">
+      <article class="card">
+        <h2>Dashboard Smart City Inmersivo</h2>
+        <p class="meta">
+          Simulacion avanzada de rutas urbanas, semaforos, trafico, red electrica, renovables y optimizacion AI de transporte para narrativa de ciudad inteligente real.
+        </p>
+        <a class="btn primary" href="./smart-city-ops-center.html">Abrir Centro de Mando</a>
+      </article>
+
+      <article class="card">
+        <h2>Vista de Telemetria y Tendencias</h2>
+        <p class="meta">
+          Vista operativa con KPIs de sensores, tendencias ambientales, actividad por dispositivo y tabla de eventos recientes para detalle tecnico durante preguntas.
+        </p>
+        <a class="btn secondary" href="./powerbi-landing.html">Abrir Vista Operativa</a>
+      </article>
+    </section>
+
+    <section class="foot">
+      <strong>Tip:</strong> para presentacion en pantalla grande, deja esta landing abierta como home y navega entre paneles desde aqui.
+    </section>
+  </main>
+</body>
+</html>

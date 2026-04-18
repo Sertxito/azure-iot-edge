@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guadarrama Smart City | Command Center</title>
+  <style>
+    :root {
+      --ink: #dbe7ff;
+      --muted: #95a8cf;
+      --bg: #050a17;
+      --panel: rgba(10, 18, 40, 0.84);
+      --edge: rgba(113, 142, 201, 0.22);
+      --c1: #45d4ff;
+      --c2: #6fff8f;
+      --c3: #ffb454;
+      --c4: #ff5f8a;
+      --ok: #3ce57b;
+      --warn: #ffb454;
+      --alert: #ff5f8a;
+      --radius: 14px;
+      --shadow: 0 16px 36px rgba(3, 8, 20, 0.6);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 14%, rgba(69, 212, 255, 0.22), rgba(69, 212, 255, 0)),
+        radial-gradient(circle at 86% 16%, rgba(255, 95, 138, 0.16), rgba(255, 95, 138, 0)),
+        radial-gradient(circle at 50% 90%, rgba(111, 255, 143, 0.12), rgba(111, 255, 143, 0)),
+        var(--bg);
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      border: 1px solid var(--edge);
+      border-radius: 22px;
+      background: rgba(5, 10, 22, 0.7);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+
+    .head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--edge);
+      display: grid;
+      gap: 8px;
+      background: linear-gradient(90deg, rgba(69, 212, 255, 0.09), rgba(255, 95, 138, 0.07));
+    }
+
+    .line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.15rem, 1rem + 1.2vw, 1.9rem);
+      letter-spacing: 0.3px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border: 1px solid var(--edge);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      color: #d9ebff;
+      background: rgba(255, 255, 255, 0.04);
+      white-space: nowrap;
+    }
+
+    .chip strong { color: #fff; }
+
+    .chip button {
+      border: 1px solid rgba(113, 142, 201, 0.45);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #e6f1ff;
+      font: inherit;
+      cursor: pointer;
+      padding: 2px 8px;
+      margin-left: 6px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--edge);
+    }
+
+    .kpi {
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      background: var(--panel);
+      padding: 10px;
+      min-height: 82px;
+    }
+
+    .kpi label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+
+    .kpi strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1rem;
+      color: #f6fbff;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 2.1fr 1.1fr;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .col {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .card {
+      border: 1px solid var(--edge);
+      border-radius: var(--radius);
+      background: var(--panel);
+      padding: 12px;
+      overflow: hidden;
+      transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease, opacity 260ms ease;
+    }
+
+    .card.rot-focus {
+      border-color: rgba(69, 212, 255, 0.58);
+      box-shadow: 0 0 0 1px rgba(69, 212, 255, 0.3), 0 20px 34px rgba(0, 0, 0, 0.36);
+      transform: translateY(-3px) scale(1.01);
+      animation: panelPulse 1.2s ease;
+    }
+
+    .card.rot-dim {
+      opacity: 0.34;
+      filter: saturate(0.72);
+    }
+
+    @keyframes panelPulse {
+      0% { box-shadow: 0 0 0 1px rgba(69, 212, 255, 0.25), 0 0 0 0 rgba(69, 212, 255, 0.28); }
+      50% { box-shadow: 0 0 0 1px rgba(69, 212, 255, 0.5), 0 0 0 12px rgba(69, 212, 255, 0); }
+      100% { box-shadow: 0 0 0 1px rgba(69, 212, 255, 0.3), 0 20px 34px rgba(0, 0, 0, 0.36); }
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      letter-spacing: 0.2px;
+      color: #e9f4ff;
+    }
+
+    .meta {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+
+    .city-map {
+      border: 1px solid rgba(69, 212, 255, 0.25);
+      border-radius: 12px;
+      background: radial-gradient(circle at 52% 44%, rgba(61, 101, 176, 0.18), rgba(9, 18, 42, 0.95));
+      width: 100%;
+      height: 380px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .city-map svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .route-dot {
+      fill: #6fff8f;
+      filter: drop-shadow(0 0 6px rgba(111, 255, 143, 0.9));
+    }
+
+    .signal-dot {
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+    }
+
+    .legend {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 4px;
+      transform: translateY(1px);
+    }
+
+    .i-route { background: var(--c1); }
+    .i-bus { background: var(--c2); }
+    .i-signal { background: var(--c3); }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+      max-height: 230px;
+      overflow: auto;
+    }
+
+    .row {
+      border: 1px solid var(--edge);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .row-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.84rem;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(113, 142, 201, 0.35);
+      background: rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #45d4ff, #6fff8f);
+    }
+
+    .donut-wrap {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .donut {
+      width: 160px;
+      height: 160px;
+    }
+
+    .mix {
+      display: grid;
+      gap: 6px;
+      font-size: 0.84rem;
+      color: #c7d8f7;
+    }
+
+    .mix div { display: flex; justify-content: space-between; }
+
+    .routes {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+
+    .routes th,
+    .routes td {
+      border-bottom: 1px solid var(--edge);
+      text-align: left;
+      padding: 7px 5px;
+      vertical-align: top;
+    }
+
+    .routes th {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .ok { color: var(--ok); font-weight: 700; }
+    .warn { color: var(--warn); font-weight: 700; }
+    .alert { color: var(--alert); font-weight: 700; }
+
+    @media (max-width: 1320px) {
+      .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .main { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 820px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split { grid-template-columns: 1fr; }
+      .donut-wrap { grid-template-columns: 1fr; }
+      .donut { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="head">
+      <div class="line">
+        <h1>Smart City Command Center | Guadarrama</h1>
+        <div class="chips">
+          <span class="chip">Fuente: <strong id="source">Demo</strong></span>
+          <span class="chip">Estado: <strong id="status">Simulado</strong></span>
+          <span class="chip">Refresh: <strong id="refreshInfo">45s</strong></span>
+          <span class="chip">Rotacion paneles: <strong id="rotationInfo">ON</strong><button id="rotationToggle" type="button">Pausar</button></span>
+          <span class="chip">Panel activo: <strong id="panelActive">-</strong></span>
+          <span class="chip">Hora: <strong id="updatedAt">-</strong></span>
+        </div>
+      </div>
+      <p class="subtitle">Panel narrativo de ciudad inteligente con rutas dinamicas, semaforos adaptativos, consumo electrico distrital, aportacion renovable y optimizacion AI de transporte.</p>
+    </section>
+
+    <section class="kpis">
+      <article class="kpi"><label>City Health Score</label><strong id="kHealth">91 / 100</strong></article>
+      <article class="kpi"><label>Flujo vehicular</label><strong id="kTraffic">0 veh/min</strong></article>
+      <article class="kpi"><label>Semaforos adaptativos</label><strong id="kSignals">0 activos</strong></article>
+      <article class="kpi"><label>Consumo red</label><strong id="kGrid">0 MW</strong></article>
+      <article class="kpi"><label>Renovable instantanea</label><strong id="kRenew">0 %</strong></article>
+      <article class="kpi"><label>Rutas AI optimizadas</label><strong id="kRoutes">0</strong></article>
+      <article class="kpi"><label>Ahorro CO2 estimado</label><strong id="kCO2">0 kg/h</strong></article>
+      <article class="kpi"><label>Alertas activas</label><strong id="kAlerts">0</strong></article>
+    </section>
+
+    <section class="main">
+      <div class="col">
+        <article class="card" data-rot-panel="mapa-movilidad">
+          <h2>Gemelo urbano: movilidad y semaforos</h2>
+          <p class="meta">Las rutas se recalculan segun congestion, ocupacion y prioridad de servicios publicos. Los nodos de semaforo simulan ajuste por IA cada ciclo.</p>
+          <div class="city-map">
+            <svg viewBox="0 0 900 380" aria-label="Mapa urbano simulado">
+              <g stroke="rgba(69,212,255,0.4)" stroke-width="4" fill="none" stroke-linecap="round">
+                <path id="r1" d="M40 70 L300 80 L520 140 L860 120"/>
+                <path id="r2" d="M60 320 L320 260 L590 250 L850 300"/>
+                <path id="r3" d="M120 40 L180 180 L250 320"/>
+                <path id="r4" d="M430 30 L430 350"/>
+                <path id="r5" d="M700 40 L640 180 L620 330"/>
+              </g>
+
+              <g stroke="rgba(111,255,143,0.26)" stroke-width="1.4" fill="none">
+                <rect x="130" y="90" width="180" height="88" rx="10"/>
+                <rect x="510" y="62" width="180" height="90" rx="10"/>
+                <rect x="560" y="226" width="220" height="96" rx="10"/>
+                <rect x="210" y="220" width="165" height="100" rx="10"/>
+              </g>
+
+              <g fill="rgba(111,255,143,0.15)" font-size="13" font-weight="700">
+                <text x="154" y="116">Distrito Centro</text>
+                <text x="535" y="88">Distrito Estacion</text>
+                <text x="582" y="252">Distrito Norte Verde</text>
+                <text x="232" y="246">Distrito Ayuntamiento</text>
+              </g>
+
+              <g id="signalLayer"></g>
+              <g id="busLayer"></g>
+            </svg>
+          </div>
+          <div class="legend">
+            <span><i class="i-route"></i>Corredores troncales</span>
+            <span><i class="i-bus"></i>Unidades en ruta</span>
+            <span><i class="i-signal"></i>Nodos semaforo AI</span>
+          </div>
+        </article>
+
+        <article class="card" data-rot-panel="corredores-consumo">
+          <h2>Corredores y consumo por distrito</h2>
+          <div class="split">
+            <div>
+              <p class="meta">Intensidad de trafico por corredor principal.</p>
+              <div id="corridorList" class="list"></div>
+            </div>
+            <div>
+              <p class="meta">Carga de red y demanda electrica por distrito.</p>
+              <div id="districtLoadList" class="list"></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="col">
+        <article class="card" data-rot-panel="mix-renovable">
+          <h2>Mix renovable y red electrica</h2>
+          <p class="meta">Integracion de solar, eolica urbana y baterias de soporte para suavizar picos de consumo.</p>
+          <div class="donut-wrap">
+            <svg class="donut" viewBox="0 0 160 160" aria-label="Mix renovable">
+              <circle cx="80" cy="80" r="56" stroke="rgba(255,255,255,0.1)" stroke-width="18" fill="none"></circle>
+              <circle id="renArc" cx="80" cy="80" r="56" stroke="url(#renGrad)" stroke-width="18" fill="none" stroke-linecap="round" transform="rotate(-90 80 80)" stroke-dasharray="0 352"></circle>
+              <defs>
+                <linearGradient id="renGrad" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#6fff8f"></stop>
+                  <stop offset="100%" stop-color="#45d4ff"></stop>
+                </linearGradient>
+              </defs>
+              <text x="80" y="76" text-anchor="middle" font-size="15" fill="#cde3ff">Renovable</text>
+              <text id="renPct" x="80" y="98" text-anchor="middle" font-size="20" font-weight="700" fill="#f7fcff">0%</text>
+            </svg>
+            <div class="mix" id="renewMix"></div>
+          </div>
+        </article>
+
+        <article class="card" data-rot-panel="rutas-ai">
+          <h2>Rutas de transporte optimizadas por AI</h2>
+          <table class="routes">
+            <thead>
+              <tr>
+                <th>Ruta</th>
+                <th>ETA base</th>
+                <th>ETA AI</th>
+                <th>Ahorro</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="routesBody"></tbody>
+          </table>
+        </article>
+
+        <article class="card" data-rot-panel="alertas">
+          <h2>Alertas estrategicas</h2>
+          <div id="alertsList" class="list"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="./blob-config.js"></script>
+  <script>
+    (function () {
+      var el = {
+        source: document.getElementById("source"),
+        status: document.getElementById("status"),
+        refreshInfo: document.getElementById("refreshInfo"),
+        rotationInfo: document.getElementById("rotationInfo"),
+        rotationToggle: document.getElementById("rotationToggle"),
+        panelActive: document.getElementById("panelActive"),
+        updatedAt: document.getElementById("updatedAt"),
+        kHealth: document.getElementById("kHealth"),
+        kTraffic: document.getElementById("kTraffic"),
+        kSignals: document.getElementById("kSignals"),
+        kGrid: document.getElementById("kGrid"),
+        kRenew: document.getElementById("kRenew"),
+        kRoutes: document.getElementById("kRoutes"),
+        kCO2: document.getElementById("kCO2"),
+        kAlerts: document.getElementById("kAlerts"),
+        signalLayer: document.getElementById("signalLayer"),
+        busLayer: document.getElementById("busLayer"),
+        corridorList: document.getElementById("corridorList"),
+        districtLoadList: document.getElementById("districtLoadList"),
+        renArc: document.getElementById("renArc"),
+        renPct: document.getElementById("renPct"),
+        renewMix: document.getElementById("renewMix"),
+        routesBody: document.getElementById("routesBody"),
+        alertsList: document.getElementById("alertsList")
+      };
+
+      var cfg = window.SMARTCITY_BLOB_CONFIG || {};
+      var tick = 0;
+      var refreshMs = Number(cfg.refreshMs || 45000);
+      var nextRefreshAt = 0;
+      var refreshTimer = null;
+      var countdownTimer = null;
+      var isLoading = false;
+      var busAnimTimer = null;
+      var currentModel = null;
+      var panelRotationMs = Number(cfg.panelRotateMs || 7000);
+      var panelRotationEnabled = true;
+      var panelRotationTimer = null;
+      var panelFocusIndex = -1;
+      var rotCards = Array.prototype.slice.call(document.querySelectorAll(".card[data-rot-panel]"));
+
+      var routeDefs = [
+        { id: "L1", path: [{x:40,y:70},{x:300,y:80},{x:520,y:140},{x:860,y:120}], baseFlow: 320 },
+        { id: "L2", path: [{x:60,y:320},{x:320,y:260},{x:590,y:250},{x:850,y:300}], baseFlow: 290 },
+        { id: "L3", path: [{x:120,y:40},{x:180,y:180},{x:250,y:320}], baseFlow: 170 },
+        { id: "L4", path: [{x:430,y:30},{x:430,y:350}], baseFlow: 230 },
+        { id: "L5", path: [{x:700,y:40},{x:640,y:180},{x:620,y:330}], baseFlow: 190 }
+      ];
+
+      var signals = [
+        { x:180, y:82 }, { x:320, y:82 }, { x:430, y:140 }, { x:520, y:140 },
+        { x:640, y:180 }, { x:430, y:250 }, { x:250, y:260 }, { x:620, y:250 },
+        { x:250, y:320 }, { x:700, y:120 }, { x:700, y:300 }
+      ];
+
+      function nowText() {
+        return new Date().toLocaleString("es-ES");
+      }
+
+      function toNum(v) {
+        var n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      }
+
+      function fmt(n, d) {
+        return Number(n || 0).toLocaleString("es-ES", {
+          minimumFractionDigits: d,
+          maximumFractionDigits: d
+        });
+      }
+
+      function hash(text) {
+        var h = 0;
+        var s = String(text || "x");
+        for (var i = 0; i < s.length; i += 1) {
+          h = ((h << 5) - h) + s.charCodeAt(i);
+          h |= 0;
+        }
+        return Math.abs(h);
+      }
+
+      function simulatePower(raw) {
+        var key = (raw.device_id || raw.deviceId || "nodo") + "|" + (raw.window_end || raw.windowEnd || "t");
+        var h = hash(key);
+        var base = 9 + (h % 70) / 10;
+        var t = toNum(raw.avg_temperature);
+        var m = toNum(raw.avg_humidity);
+        return Math.max(7.5, base + Math.max(0, (t - 18) * 0.2) + Math.max(0, (m - 40) * 0.04));
+      }
+
+      function normalizeRecord(raw) {
+        var p = toNum(raw.avg_power_w);
+        return {
+          window_end: raw.window_end || raw.windowEnd || "",
+          device_id: raw.device_id || raw.deviceId || "nodo-sin-id",
+          events_count: toNum(raw.events_count),
+          avg_temperature: toNum(raw.avg_temperature),
+          avg_humidity: toNum(raw.avg_humidity),
+          avg_power_w: p > 0 ? p : simulatePower(raw)
+        };
+      }
+
+      function demoRows() {
+        return [
+          { window_end: "2026-04-17T10:00:00Z", device_id: "nodo-centro-01", events_count: 155, avg_temperature: 22.2, avg_humidity: 46.2, avg_power_w: 12.4 },
+          { window_end: "2026-04-17T10:01:00Z", device_id: "nodo-estacion-02", events_count: 164, avg_temperature: 22.6, avg_humidity: 45.4, avg_power_w: 13.8 },
+          { window_end: "2026-04-17T10:02:00Z", device_id: "nodo-norte-03", events_count: 171, avg_temperature: 21.9, avg_humidity: 48.9, avg_power_w: 11.1 },
+          { window_end: "2026-04-17T10:03:00Z", device_id: "nodo-ayto-04", events_count: 189, avg_temperature: 22.8, avg_humidity: 44.5, avg_power_w: 14.2 },
+          { window_end: "2026-04-17T10:04:00Z", device_id: "nodo-centro-01", events_count: 193, avg_temperature: 23.0, avg_humidity: 43.8, avg_power_w: 13.9 },
+          { window_end: "2026-04-17T10:05:00Z", device_id: "nodo-estacion-02", events_count: 186, avg_temperature: 23.3, avg_humidity: 42.6, avg_power_w: 14.7 }
+        ].map(normalizeRecord);
+      }
+
+      function encodeBlobPath(name) {
+        return name.split("/").map(encodeURIComponent).join("/");
+      }
+
+      function withSas(url, sas) {
+        if (!sas) {
+          return url;
+        }
+        var token = sas.replace(/^\?/, "");
+        return url + (url.indexOf("?") >= 0 ? "&" : "?") + token;
+      }
+
+      function parseNdjson(text) {
+        return text
+          .split(/\r?\n/)
+          .map(function (line) { return line.trim(); })
+          .filter(Boolean)
+          .map(function (line) {
+            try { return normalizeRecord(JSON.parse(line)); }
+            catch (_e) { return null; }
+          })
+          .filter(Boolean);
+      }
+
+      async function listBlobs(baseUrl, container, prefix, sasToken) {
+        var listUrl = baseUrl + "/" + encodeURIComponent(container) + "?restype=container&comp=list&prefix=" + encodeURIComponent(prefix || "");
+        var response = await fetch(withSas(listUrl, sasToken));
+        if (!response.ok) {
+          throw new Error("No se pudo listar blobs");
+        }
+        var xmlText = await response.text();
+        var xml = new DOMParser().parseFromString(xmlText, "application/xml");
+        var names = Array.prototype.slice.call(xml.getElementsByTagName("Name"));
+        return names.map(function (n) { return n.textContent; }).filter(Boolean).sort().reverse();
+      }
+
+      async function fetchRowsFromBlob() {
+        var baseUrl = (cfg.baseUrl || "").replace(/\/$/, "");
+        var container = cfg.container || "";
+        var prefix = cfg.prefix || "aggregates/";
+        var maxBlobs = Number(cfg.maxBlobs || 12);
+        var sasToken = cfg.sasToken || "";
+
+        if (!cfg.enabled || !baseUrl || !container) {
+          throw new Error("Blob no configurado");
+        }
+
+        var names = await listBlobs(baseUrl, container, prefix, sasToken);
+        var selected = names.slice(0, Math.max(1, maxBlobs));
+        if (!selected.length) {
+          throw new Error("Sin blobs en prefijo");
+        }
+
+        var parts = await Promise.all(selected.map(async function (name) {
+          var url = baseUrl + "/" + encodeURIComponent(container) + "/" + encodeBlobPath(name);
+          var resp = await fetch(withSas(url, sasToken));
+          if (!resp.ok) {
+            return [];
+          }
+          return parseNdjson(await resp.text());
+        }));
+
+        return parts
+          .reduce(function (acc, arr) { return acc.concat(arr); }, [])
+          .sort(function (a, b) { return String(b.window_end).localeCompare(String(a.window_end)); });
+      }
+
+      function lerpPoint(path, t) {
+        if (!path.length) {
+          return { x: 0, y: 0 };
+        }
+        if (path.length === 1) {
+          return path[0];
+        }
+
+        var segments = [];
+        var total = 0;
+        for (var i = 1; i < path.length; i += 1) {
+          var dx = path[i].x - path[i - 1].x;
+          var dy = path[i].y - path[i - 1].y;
+          var len = Math.sqrt(dx * dx + dy * dy);
+          segments.push({ len: len, from: path[i - 1], to: path[i] });
+          total += len;
+        }
+
+        var dist = Math.max(0, Math.min(1, t)) * total;
+        var acc = 0;
+        for (var j = 0; j < segments.length; j += 1) {
+          var s = segments[j];
+          if (acc + s.len >= dist) {
+            var ratio = s.len ? (dist - acc) / s.len : 0;
+            return {
+              x: s.from.x + (s.to.x - s.from.x) * ratio,
+              y: s.from.y + (s.to.y - s.from.y) * ratio
+            };
+          }
+          acc += s.len;
+        }
+        return path[path.length - 1];
+      }
+
+      function buildModel(rows) {
+        var totalEvents = rows.reduce(function (acc, r) { return acc + toNum(r.events_count); }, 0);
+        var avgTemp = rows.length ? rows.reduce(function (acc, r) { return acc + toNum(r.avg_temperature); }, 0) / rows.length : 22;
+        var avgHum = rows.length ? rows.reduce(function (acc, r) { return acc + toNum(r.avg_humidity); }, 0) / rows.length : 46;
+        var avgPower = rows.length ? rows.reduce(function (acc, r) { return acc + toNum(r.avg_power_w); }, 0) / rows.length : 12;
+
+        var trafficIndex = Math.max(120, Math.round(totalEvents / Math.max(1, rows.length) * 1.45));
+        var gridMw = Math.max(22, avgPower * 2.6);
+        var renewablePct = Math.max(28, Math.min(78, 42 + (26 - avgTemp) * 0.9 + (tick % 7)));
+        var co2Saved = Math.max(80, Math.round(renewablePct * 4.4));
+
+        var corridors = routeDefs.map(function (r, idx) {
+          var pulse = Math.sin((tick + idx * 7) / 4);
+          var flow = Math.round(r.baseFlow + pulse * 38 + trafficIndex * 0.18);
+          var sat = Math.max(16, Math.min(98, Math.round((flow / 520) * 100)));
+          return {
+            id: r.id,
+            flow: flow,
+            saturation: sat,
+            status: sat > 82 ? "Alta carga" : (sat > 64 ? "Denso" : "Fluido")
+          };
+        });
+
+        var districts = [
+          { name: "Centro", demand: gridMw * 0.28, cap: 13.5 },
+          { name: "Estacion", demand: gridMw * 0.23, cap: 11.2 },
+          { name: "Ayuntamiento", demand: gridMw * 0.19, cap: 10.1 },
+          { name: "Norte Verde", demand: gridMw * 0.17, cap: 8.4 },
+          { name: "Industrial Ligero", demand: gridMw * 0.13, cap: 7.6 }
+        ].map(function (d, idx) {
+          var jitter = 0.9 + ((tick + idx * 3) % 9) / 40;
+          var demand = d.demand * jitter;
+          var sat = Math.round(Math.min(100, (demand / d.cap) * 100));
+          return {
+            name: d.name,
+            demand: demand,
+            cap: d.cap,
+            sat: sat,
+            status: sat > 88 ? "Critico" : (sat > 72 ? "Vigilancia" : "Estable")
+          };
+        });
+
+        var routes = [
+          { name: "R-1 Centro -> Estacion", base: 24, ai: 19, occ: 82 },
+          { name: "R-2 Norte Verde -> Centro", base: 18, ai: 14, occ: 73 },
+          { name: "R-3 Ayuntamiento -> Hospital", base: 16, ai: 13, occ: 64 },
+          { name: "R-4 Circular Urbana", base: 27, ai: 21, occ: 88 },
+          { name: "R-5 Centro -> Zona Escolar", base: 14, ai: 11, occ: 69 }
+        ].map(function (r, idx) {
+          var dynamic = ((tick + idx) % 3) - 1;
+          var aiEta = Math.max(8, r.ai + dynamic);
+          var gain = Math.max(1, r.base - aiEta);
+          var state = gain >= 5 ? "optimo" : (gain >= 3 ? "estable" : "limitado");
+          return {
+            name: r.name,
+            base: r.base,
+            ai: aiEta,
+            gain: gain,
+            occ: r.occ,
+            state: state
+          };
+        });
+
+        var alerts = [];
+        if (avgTemp > 26.2) {
+          alerts.push({ sev: "alert", text: "Pico termico en corredor Centro. Recomendar sombra y ajuste HVAC municipal." });
+        }
+        if (corridors.some(function (c) { return c.saturation > 84; })) {
+          alerts.push({ sev: "warn", text: "Congestion alta en al menos un corredor. IA aplicando desvio dinamico." });
+        }
+        if (districts.some(function (d) { return d.sat > 88; })) {
+          alerts.push({ sev: "alert", text: "Subestacion cerca de limite. Derivacion de carga a bateria urbana." });
+        }
+        if (!alerts.length) {
+          alerts.push({ sev: "ok", text: "Operacion estable. SLO de movilidad y energia dentro de umbral." });
+        }
+
+        var health = Math.max(62, Math.min(99,
+          Math.round(97 - alerts.filter(function (a) { return a.sev === "alert"; }).length * 14 - alerts.filter(function (a) { return a.sev === "warn"; }).length * 6)
+        ));
+
+        return {
+          totalEvents: totalEvents,
+          avgTemp: avgTemp,
+          avgHum: avgHum,
+          avgPower: avgPower,
+          trafficIndex: trafficIndex,
+          gridMw: gridMw,
+          renewablePct: renewablePct,
+          co2Saved: co2Saved,
+          corridors: corridors,
+          districts: districts,
+          routes: routes,
+          alerts: alerts,
+          health: health,
+          activeSignals: signals.length,
+          aiRoutes: routes.length
+        };
+      }
+
+      function renderSignals() {
+        var html = "";
+        signals.forEach(function (s, idx) {
+          var cycle = (tick + idx) % 9;
+          var color = cycle < 4 ? "#3ce57b" : (cycle < 7 ? "#ffb454" : "#ff5f8a");
+          html += "<circle class=\"signal-dot\" cx=\"" + s.x + "\" cy=\"" + s.y + "\" r=\"5\" fill=\"" + color + "\"></circle>";
+        });
+        el.signalLayer.innerHTML = html;
+      }
+
+      function renderBuses(model) {
+        if (busAnimTimer) {
+          clearInterval(busAnimTimer);
+        }
+
+        var units = [];
+        routeDefs.forEach(function (r, ridx) {
+          var volume = model.corridors[ridx] ? model.corridors[ridx].saturation : 60;
+          var count = volume > 80 ? 3 : (volume > 60 ? 2 : 1);
+          for (var i = 0; i < count; i += 1) {
+            units.push({
+              route: r,
+              phase: ((tick + i * 3 + ridx * 2) % 20) / 20,
+              speed: 0.0045 + (ridx * 0.0005) + (i * 0.0003)
+            });
+          }
+        });
+
+        function paintUnits() {
+          var html = "";
+          units.forEach(function (u, idx) {
+            u.phase = (u.phase + u.speed) % 1;
+            var p = lerpPoint(u.route.path, u.phase);
+            html += "<circle class=\"route-dot\" cx=\"" + p.x.toFixed(1) + "\" cy=\"" + p.y.toFixed(1) + "\" r=\"" + (idx % 2 ? "4" : "5") + "\"></circle>";
+          });
+          el.busLayer.innerHTML = html;
+        }
+
+        paintUnits();
+        busAnimTimer = setInterval(paintUnits, 110);
+      }
+
+      function renderCorridors(model) {
+        el.corridorList.innerHTML = "";
+        model.corridors.forEach(function (c) {
+          var cls = c.saturation > 84 ? "alert" : (c.saturation > 68 ? "warn" : "ok");
+          var item = document.createElement("div");
+          item.className = "row";
+          item.innerHTML = ""
+            + "<div class=\"row-top\"><strong>" + c.id + "</strong><span>" + fmt(c.flow, 0) + " veh/min</span></div>"
+            + "<div class=\"bar\"><span style=\"width:" + c.saturation + "%\"></span></div>"
+            + "<div class=\"" + cls + "\" style=\"font-size:0.78rem\">" + c.status + " (" + c.saturation + "%)</div>";
+          el.corridorList.appendChild(item);
+        });
+      }
+
+      function renderDistrictLoads(model) {
+        el.districtLoadList.innerHTML = "";
+        model.districts.forEach(function (d) {
+          var cls = d.sat > 88 ? "alert" : (d.sat > 72 ? "warn" : "ok");
+          var item = document.createElement("div");
+          item.className = "row";
+          item.innerHTML = ""
+            + "<div class=\"row-top\"><strong>" + d.name + "</strong><span>" + fmt(d.demand, 1) + " MW</span></div>"
+            + "<div class=\"bar\"><span style=\"width:" + d.sat + "%\"></span></div>"
+            + "<div class=\"" + cls + "\" style=\"font-size:0.78rem\">" + d.status + " | Capacidad " + fmt(d.cap, 1) + " MW</div>";
+          el.districtLoadList.appendChild(item);
+        });
+      }
+
+      function renderRenewables(model) {
+        var pct = Math.round(model.renewablePct);
+        var circumference = 352;
+        var arc = Math.max(8, Math.round((pct / 100) * circumference));
+        el.renArc.setAttribute("stroke-dasharray", arc + " " + circumference);
+        el.renPct.textContent = pct + "%";
+
+        var solar = Math.round(pct * 0.46);
+        var eolica = Math.round(pct * 0.32);
+        var baterias = Math.max(4, pct - solar - eolica);
+        var redConv = Math.max(10, 100 - pct);
+
+        el.renewMix.innerHTML = ""
+          + "<div><span>Solar municipal</span><strong>" + solar + "%</strong></div>"
+          + "<div><span>Eolica urbana</span><strong>" + eolica + "%</strong></div>"
+          + "<div><span>Baterias soporte</span><strong>" + baterias + "%</strong></div>"
+          + "<div><span>Red convencional</span><strong>" + redConv + "%</strong></div>";
+      }
+
+      function renderRoutes(model) {
+        el.routesBody.innerHTML = "";
+        model.routes.forEach(function (r) {
+          var stateCls = r.state === "optimo" ? "ok" : (r.state === "estable" ? "warn" : "alert");
+          var tr = document.createElement("tr");
+          tr.innerHTML = ""
+            + "<td>" + r.name + "</td>"
+            + "<td>" + r.base + " min</td>"
+            + "<td>" + r.ai + " min</td>"
+            + "<td>" + r.gain + " min</td>"
+            + "<td class=\"" + stateCls + "\">" + r.state + "</td>";
+          el.routesBody.appendChild(tr);
+        });
+      }
+
+      function renderAlerts(model) {
+        el.alertsList.innerHTML = "";
+        model.alerts.forEach(function (a) {
+          var item = document.createElement("div");
+          item.className = "row";
+          item.innerHTML = "<div class=\"" + a.sev + "\" style=\"font-size:0.82rem\">" + a.text + "</div><div style=\"font-size:0.75rem;color:#8fa9d5\">" + nowText() + "</div>";
+          el.alertsList.appendChild(item);
+        });
+      }
+
+      function renderKpis(model) {
+        el.kHealth.textContent = model.health + " / 100";
+        el.kTraffic.textContent = fmt(model.trafficIndex, 0) + " veh/min";
+        el.kSignals.textContent = model.activeSignals + " activos";
+        el.kGrid.textContent = fmt(model.gridMw, 1) + " MW";
+        el.kRenew.textContent = fmt(model.renewablePct, 0) + " %";
+        el.kRoutes.textContent = model.aiRoutes.toString();
+        el.kCO2.textContent = fmt(model.co2Saved, 0) + " kg/h";
+        el.kAlerts.textContent = model.alerts.length.toString();
+      }
+
+      function renderModel(model, source, connected) {
+        currentModel = model;
+        el.source.textContent = source;
+        el.status.textContent = connected ? "Conectado" : "Simulado";
+        el.updatedAt.textContent = nowText();
+
+        renderSignals();
+        renderBuses(model);
+        renderKpis(model);
+        renderCorridors(model);
+        renderDistrictLoads(model);
+        renderRenewables(model);
+        renderRoutes(model);
+        renderAlerts(model);
+      }
+
+      function applyPanelFocus(index) {
+        if (!rotCards.length) {
+          return;
+        }
+
+        panelFocusIndex = index % rotCards.length;
+        rotCards.forEach(function (card, idx) {
+          card.classList.remove("rot-focus");
+          card.classList.remove("rot-dim");
+          if (idx === panelFocusIndex) {
+            card.classList.add("rot-focus");
+          } else {
+            card.classList.add("rot-dim");
+          }
+        });
+
+        var active = rotCards[panelFocusIndex];
+        if (active) {
+          var label = active.getAttribute("data-rot-panel") || "panel";
+          if (el.panelActive) {
+            el.panelActive.textContent = label.replace(/-/g, " ");
+          }
+          active.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        }
+      }
+
+      function clearPanelFocus() {
+        rotCards.forEach(function (card) {
+          card.classList.remove("rot-focus");
+          card.classList.remove("rot-dim");
+        });
+        if (el.panelActive) {
+          el.panelActive.textContent = "-";
+        }
+      }
+
+      function updateRotationUi() {
+        if (!el.rotationInfo || !el.rotationToggle) {
+          return;
+        }
+
+        if (!panelRotationEnabled || !rotCards.length) {
+          el.rotationInfo.textContent = "OFF";
+          el.rotationToggle.textContent = "Reanudar";
+          return;
+        }
+
+        var human = Math.round(panelRotationMs / 1000) + "s";
+        var pos = (panelFocusIndex + 1) + "/" + rotCards.length;
+        el.rotationInfo.textContent = "ON " + human + " · " + pos;
+        el.rotationToggle.textContent = "Pausar";
+      }
+
+      function stopPanelRotation() {
+        if (panelRotationTimer) {
+          clearInterval(panelRotationTimer);
+          panelRotationTimer = null;
+        }
+      }
+
+      function startPanelRotation() {
+        stopPanelRotation();
+
+        if (!panelRotationEnabled || !rotCards.length || panelRotationMs < 4000) {
+          clearPanelFocus();
+          updateRotationUi();
+          return;
+        }
+
+        if (panelFocusIndex < 0) {
+          applyPanelFocus(0);
+        }
+        updateRotationUi();
+
+        panelRotationTimer = setInterval(function () {
+          applyPanelFocus(panelFocusIndex + 1);
+          updateRotationUi();
+        }, panelRotationMs);
+      }
+
+      function setRefreshLabel() {
+        if (!refreshMs || refreshMs < 15000) {
+          el.refreshInfo.textContent = "off";
+          return;
+        }
+        var sec = Math.max(0, Math.ceil((nextRefreshAt - Date.now()) / 1000));
+        el.refreshInfo.textContent = Math.round(refreshMs / 1000) + "s (" + sec + "s)";
+      }
+
+      async function hydrate() {
+        if (isLoading) {
+          return;
+        }
+        isLoading = true;
+        tick += 1;
+
+        try {
+          var rows = await fetchRowsFromBlob();
+          if (!rows.length) {
+            throw new Error("sin filas");
+          }
+          renderModel(buildModel(rows), "Blob", true);
+        } catch (_e) {
+          renderModel(buildModel(demoRows()), "Demo", false);
+        }
+
+        isLoading = false;
+      }
+
+      function setupRefresh() {
+        if (refreshTimer) {
+          clearInterval(refreshTimer);
+        }
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+        }
+
+        if (!refreshMs || refreshMs < 15000) {
+          setRefreshLabel();
+          return;
+        }
+
+        nextRefreshAt = Date.now() + refreshMs;
+        setRefreshLabel();
+
+        refreshTimer = setInterval(function () {
+          nextRefreshAt = Date.now() + refreshMs;
+          hydrate();
+          setRefreshLabel();
+        }, refreshMs);
+
+        countdownTimer = setInterval(setRefreshLabel, 1000);
+      }
+
+      if (el.rotationToggle) {
+        el.rotationToggle.addEventListener("click", function () {
+          panelRotationEnabled = !panelRotationEnabled;
+          if (!panelRotationEnabled) {
+            stopPanelRotation();
+            clearPanelFocus();
+          } else {
+            startPanelRotation();
+          }
+          updateRotationUi();
+        });
+      }
+
+      setupRefresh();
+      startPanelRotation();
+      hydrate();
+    })();
+  </script>
+</body>
+</html>
